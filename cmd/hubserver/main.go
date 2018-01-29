@@ -95,5 +95,5 @@ func (handler *subscriptionHandler) ServeHTTP(w http.ResponseWriter, r *http.Req
 
 func main() {
 	http.Handle("/", &subscriptionHandler{})
-	tlog.Fatal(http.ListenAndServe(":80", nil))
+	log.Fatal(http.ListenAndServe(":80", nil))
 }
