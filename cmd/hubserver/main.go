@@ -3,11 +3,22 @@ package main
 import (
 	"fmt"
 	"log"
-	"strings"
+	//"strings"
 	//import "strconv"
+	"math/rand"
 	"net/http"
 	"net/url"
 )
+
+const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+
+func RandStringBytes(n int) string {
+	b := make([]byte, n)
+	for i := range b {
+		b[i] = letterBytes[rand.Intn(len(letterBytes))]
+	}
+	return string(b)
+}
 
 type subscriptionHandler struct {
 }
@@ -53,10 +64,19 @@ func (handler *subscriptionHandler) ServeHTTP(w http.ResponseWriter, r *http.Req
 
 		go func() {
 			client := http.Client{}
-			req, err := http.NewRequest("POST", callbackURL.String(), strings.NewReader("TEST"))
-			req.Header.Add("Content-Type", "text/plain")
-			req.Header.Add("Link", fmt.Sprintf("<https://hub.stuifzandapp.com/>; rel=hub, <%s>; rel=self", topicURL.String()))
+
+			validationURL := callbackURL
+			validationURL.Query().Add("hub.mode", "subscribe")
+			validationURL.Query().Add("hub.topic", topicURL.String())
+			validationURL.Query().Add("hub.challenge", RandStringBytes(12))
+
+			req, err := http.NewRequest(http.MethodGet, callbackURL.String(), nil)
 			res, err := client.Do(req)
+
+			// req, err := http.NewRequest("POST", callbackURL.String(), strings.NewReader("TEST"))
+			// req.Header.Add("Content-Type", "text/plain")
+			// req.Header.Add("Link", fmt.Sprintf("<https://hub.stuifzandapp.com/>; rel=hub, <%s>; rel=self", topicURL.String()))
+			// res, err := client.Do(req)
 			log.Println(res, err)
 		}()
 
