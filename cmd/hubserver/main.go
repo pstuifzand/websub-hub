@@ -70,6 +70,8 @@ func (handler *subscriptionHandler) ServeHTTP(w http.ResponseWriter, r *http.Req
 			validationURL.Query().Add("hub.topic", topicURL.String())
 			validationURL.Query().Add("hub.challenge", RandStringBytes(12))
 
+			log.Println(validationURL)
+
 			req, err := http.NewRequest(http.MethodGet, callbackURL.String(), nil)
 			res, err := client.Do(req)
 
