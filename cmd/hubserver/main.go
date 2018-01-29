@@ -66,9 +66,11 @@ func (handler *subscriptionHandler) ServeHTTP(w http.ResponseWriter, r *http.Req
 			client := http.Client{}
 
 			validationURL := callbackURL
-			validationURL.Query().Add("hub.mode", "subscribe")
-			validationURL.Query().Add("hub.topic", topicURL.String())
-			validationURL.Query().Add("hub.challenge", RandStringBytes(12))
+			q := validationURL.Query()
+			q.Add("hub.mode", "subscribe")
+			q.Add("hub.topic", topicURL.String())
+			q.Add("hub.challenge", RandStringBytes(12))
+			validationURL.RawQuery = q.Encode()
 
 			log.Println(validationURL)
 
@@ -93,5 +95,5 @@ func (handler *subscriptionHandler) ServeHTTP(w http.ResponseWriter, r *http.Req
 
 func main() {
 	http.Handle("/", &subscriptionHandler{})
-	log.Fatal(http.ListenAndServe(":80", nil))
+	tlog.Fatal(http.ListenAndServe(":80", nil))
 }
