@@ -4,11 +4,13 @@ pipeline:
         commands:
             - go get github.com/pstuifzand/websub-hub/cmd/hubserver
             - go build github.com/pstuifzand/websub-hub/cmd/hubserver
-    # publish:
-    #     image: plugins/docker
-    #     repo: registry.stuifzandapp.com/websub-hub
-    #     registry: registry.stuifzandapp.com
-    #     secrets: [ docker_username, docker_password ]
+
+    publish:
+        image: plugins/docker
+        repo: registry.stuifzandapp.com/websub-hub
+        registry: registry.stuifzandapp.com
+        secrets: [ docker_username, docker_password ]
+
     # deploy:
     #     image: appleboy/drone-ssh
     #     host: publog.stuifzandapp.com
