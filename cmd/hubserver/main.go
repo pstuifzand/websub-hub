@@ -3,11 +3,10 @@ package main
 import (
 	"fmt"
 	"log"
-	//"strings"
-	//import "strconv"
 	"math/rand"
 	"net/http"
 	"net/url"
+	"strconv"
 )
 
 const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
@@ -38,13 +37,13 @@ func (handler *subscriptionHandler) ServeHTTP(w http.ResponseWriter, r *http.Req
 	mode := r.Form.Get("hub.mode")
 	callback := r.Form.Get("hub.callback")
 	topic := r.Form.Get("hub.topic")
-	// leaseSecondsStr := r.Form.Get("hub.lease_seconds")
-	// leaseSeconds, err := strconv.ParseInt(leaseSecondsStr, 10, 64)
-	// if leaseSecondsStr != "" && err != nil {
-	// 	http.Error(w, "hub.lease_seconds is used, but not valid", 400)
-	// 	return
-	// }
-	// secret := r.Form.Get("hub.secret")
+	leaseSecondsStr := r.Form.Get("hub.lease_seconds")
+	_, err = strconv.ParseInt(leaseSecondsStr, 10, 64)
+	if leaseSecondsStr != "" && err != nil {
+		http.Error(w, "hub.lease_seconds is used, but not valid", 400)
+		return
+	}
+	//secret := r.Form.Get("hub.secret")
 
 	if mode == "subscribe" {
 		callbackURL, err := url.Parse(callback)
@@ -70,6 +69,7 @@ func (handler *subscriptionHandler) ServeHTTP(w http.ResponseWriter, r *http.Req
 			q.Add("hub.mode", "subscribe")
 			q.Add("hub.topic", topicURL.String())
 			q.Add("hub.challenge", RandStringBytes(12))
+			q.Add("hub.lease_seconds", leaseSecondsStr)
 			validationURL.RawQuery = q.Encode()
 
 			log.Println(validationURL)
