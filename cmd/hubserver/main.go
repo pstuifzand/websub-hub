@@ -66,7 +66,7 @@ func (handler *subscriptionHandler) handlePublish(w http.ResponseWriter, r *http
 				mac := hmac.New(sha1.New, []byte(sub.Secret))
 				mac.Write(feedContent)
 				signature := mac.Sum(nil)
-				req.Header.Add("X-Hub-Signature", fmt.Sprintf("sha1=%s", signature))
+				req.Header.Add("X-Hub-Signature", fmt.Sprintf("sha1=%x", signature))
 			}
 			res, err = client.Do(req)
 			if err != nil {
