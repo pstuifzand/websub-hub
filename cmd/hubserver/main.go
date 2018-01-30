@@ -35,6 +35,7 @@ type subscriptionHandler struct {
 func (handler *subscriptionHandler) handlePublish(w http.ResponseWriter, r *http.Request) error {
 	topic := r.Form.Get("hub.topic")
 	log.Printf("Topic = %s\n", topic)
+
 	return nil
 }
 
@@ -166,8 +167,9 @@ func (handler *subscriptionHandler) save() error {
 
 func main() {
 	handler := &subscriptionHandler{}
-	handler.Subscribers = make(map[string][]Subscriber)
-	handler.load()
+	if err := handler.load(); err != nil {
+		handler.Subscribers = make(map[string][]Subscriber)
+	}
 	http.Handle("/", handler)
 	log.Fatal(http.ListenAndServe(":80", nil))
 }
