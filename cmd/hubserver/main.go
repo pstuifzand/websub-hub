@@ -44,6 +44,14 @@ func (handler *subscriptionHandler) handlePublish(w http.ResponseWriter, r *http
 
 	if subs, e := handler.Subscribers[topic]; e {
 		for _, sub := range subs {
+			req, err := http.NewRequest("POST", sub.Callback, res.Body)
+			req.Header.Add("Content-Type", res.Header.Get("Content-Type"))
+			req.Header.Add("Link",
+				fmt.Sprintf(
+					"<%s>; rel=hub, <%s>; rel=self",
+					"https://hub.stuifzandapp.com/",
+					topic,
+				))
 			res, err = http.Post(sub.Callback, res.Header.Get("Content-Type"), res.Body)
 			if err != nil {
 				log.Printf("While POSTing to %s: %s", sub.Callback, err)
