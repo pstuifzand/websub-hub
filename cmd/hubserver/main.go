@@ -64,11 +64,9 @@ func (handler *subscriptionHandler) handleSubscription(w http.ResponseWriter, r 
 	fmt.Fprint(w, "Accepted")
 
 	go func() {
-		client := http.Client{}
-
 		ourChallenge := randStringBytes(12)
 
-		validationURL := callbackURL
+		validationURL := *callbackURL
 		q := validationURL.Query()
 		q.Add("hub.mode", "subscribe")
 		q.Add("hub.topic", topicURL.String())
@@ -78,30 +76,37 @@ func (handler *subscriptionHandler) handleSubscription(w http.ResponseWriter, r 
 
 		log.Println(validationURL)
 
-		req, err := http.NewRequest(http.MethodGet, callbackURL.String(), nil)
-		if err != nil {
-			log.Println(err)
-			return
-		}
-		res, err := client.Do(req)
-		if err != nil {
-			log.Println(err)
-			return
-		}
-		defer res.Body.Close()
-
-		body, err := ioutil.ReadAll(res.Body)
-		if err != nil {
-			log.Println(err)
-		}
-
-		if strings.Contains(string(body), ourChallenge) {
+		if validateURL(validationURL.String(), ourChallenge) {
 			// challenge accepted
 			handler.addSubscriberCallback(topicURL.String(), Subscriber{callbackURL.String(), leaseSeconds})
 		}
 	}()
 
 	return nil
+}
+
+func validateURL(url, challenge string) bool {
+	client := http.Client{}
+
+	req, err := http.NewRequest(http.MethodGet, url, nil)
+	if err != nil {
+		log.Println(err)
+		return false
+	}
+	res, err := client.Do(req)
+	if err != nil {
+		log.Println(err)
+		return false
+	}
+	defer res.Body.Close()
+
+	body, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		log.Println(err)
+		return false
+	}
+
+	return strings.Contains(string(body), challenge)
 }
 
 func (handler *subscriptionHandler) addSubscriberCallback(topic string, subscriber Subscriber) {
