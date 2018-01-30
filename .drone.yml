@@ -20,3 +20,7 @@ pipeline:
             - cd /home/hub/hub
             - docker-compose pull
             - docker-compose up -d
+
+    done:
+        commands:
+            - ./deployment.sh
