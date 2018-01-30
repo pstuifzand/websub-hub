@@ -22,5 +22,8 @@ pipeline:
             - docker-compose up -d
 
     done:
+        image: ubuntu
         commands:
             - ./deployment.sh
+        environment:
+            - PUSHBULLET_API_TOKEN=${pushbullet_api_token}
