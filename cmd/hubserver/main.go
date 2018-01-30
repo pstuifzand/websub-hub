@@ -161,7 +161,7 @@ func (handler *subscriptionHandler) save() error {
 
 func main() {
 	handler := &subscriptionHandler{}
-	handler.Subscribers = make(map[string]Subscriber)
+	handler.Subscribers = make(map[string][]Subscriber)
 	handler.load()
 	http.Handle("/", handler)
 	log.Fatal(http.ListenAndServe(":80", nil))
