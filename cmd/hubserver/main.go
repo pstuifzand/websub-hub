@@ -201,6 +201,11 @@ func (handler *subscriptionHandler) addSubscriberCallback(topic string, subscrib
 }
 
 func (handler *subscriptionHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if r.Method == http.MethodGet {
+		fmt.Println("WebSub hub")
+		return
+	}
+
 	if r.Header.Get("Content-Type") != "application/x-www-form-urlencoded" {
 		http.Error(w, "Bad Request", 400)
 		return
@@ -222,6 +227,7 @@ func (handler *subscriptionHandler) ServeHTTP(w http.ResponseWriter, r *http.Req
 		return
 	} else if mode == "publish" {
 		handler.handlePublish(w, r)
+		return
 	} else {
 		http.Error(w, "Unknown hub.mode", 400)
 		return
