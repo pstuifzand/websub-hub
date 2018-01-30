@@ -36,6 +36,22 @@ func (handler *subscriptionHandler) handlePublish(w http.ResponseWriter, r *http
 	topic := r.Form.Get("hub.topic")
 	log.Printf("Topic = %s\n", topic)
 
+	client := &http.Client{}
+	res, err := client.Get(topic)
+	if err != nil {
+		return err
+	}
+
+	if subs, e := handler.Subscribers[topic]; e {
+		for _, sub := range subs {
+			res, err = http.Post(sub.Callback, res.Header.Get("Content-Type"), res.Body)
+			if err != nil {
+				log.Printf("While POSTing to %s: %s", sub.Callback, err)
+				continue
+			}
+		}
+	}
+
 	return nil
 }
 
