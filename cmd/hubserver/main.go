@@ -118,7 +118,6 @@ func (handler *subscriptionHandler) handleSubscription(w http.ResponseWriter, r 
 		log.Println(validationURL)
 
 		if validateURL(validationURL.String(), ourChallenge) {
-			// challenge accepted
 			handler.addSubscriberCallback(topicURL.String(), Subscriber{callbackURL.String(), leaseSeconds, secret})
 		}
 	}()
@@ -151,8 +150,18 @@ func validateURL(url, challenge string) bool {
 }
 
 func (handler *subscriptionHandler) addSubscriberCallback(topic string, subscriber Subscriber) {
+	defer handler.save()
+	if subs, e := handler.Subscribers[topic]; e {
+		for i, sub := range subs {
+			if sub.Callback == subscriber.Callback {
+				handler.Subscribers[topic][i] = subscriber
+				return
+			}
+		}
+	}
+
+	// not found create a new subscription
 	handler.Subscribers[topic] = append(handler.Subscribers[topic], subscriber)
-	handler.save()
 }
 
 func (handler *subscriptionHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
