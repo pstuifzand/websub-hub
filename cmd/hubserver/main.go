@@ -202,7 +202,7 @@ func (handler *subscriptionHandler) addSubscriberCallback(topic string, subscrib
 
 func (handler *subscriptionHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodGet {
-		fmt.Println("WebSub hub")
+		fmt.Fprintln(w, "WebSub hub")
 		return
 	}
 
