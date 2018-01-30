@@ -50,7 +50,7 @@ func (handler *subscriptionHandler) handlePublish(w http.ResponseWriter, r *http
 
 	if subs, e := handler.Subscribers[topic]; e {
 		for _, sub := range subs {
-			req, err := http.NewRequest("POST", sub.Callback, nil)
+			req, err := http.NewRequest("POST", sub.Callback, strings.NewReader(string(feedContent)))
 			if err != nil {
 				log.Printf("While creating request to %s: %s", sub.Callback, err)
 				continue
