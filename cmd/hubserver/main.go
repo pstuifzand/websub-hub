@@ -83,6 +83,7 @@ func (handler *subscriptionHandler) handleUnsubscription(w http.ResponseWriter, 
 	log.Println(r.Form.Encode())
 	callback := r.Form.Get("hub.callback")
 	topic := r.Form.Get("hub.topic")
+	mode := r.Form.Get("hub.mode")
 
 	if subs, e := handler.Subscribers[topic]; e {
 		for i, sub := range subs {
@@ -90,6 +91,17 @@ func (handler *subscriptionHandler) handleUnsubscription(w http.ResponseWriter, 
 				continue
 			}
 			ourChallenge := randStringBytes(12)
+
+			validationURL, err := url.Parse(callback)
+			if err != nil {
+				log.Println(err)
+				return err
+			}
+			q := validationURL.Query()
+			q.Add("hub.mode", mode)
+			q.Add("hub.topic", topic)
+			q.Add("hub.challenge", ourChallenge)
+			validationURL.RawQuery = q.Encode()
 			if validateURL(sub.Callback, ourChallenge) {
 				subs = append(subs[:i], subs[i+1:]...)
 				break
