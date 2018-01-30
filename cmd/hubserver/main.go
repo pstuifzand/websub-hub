@@ -102,7 +102,7 @@ func (handler *subscriptionHandler) handleUnsubscription(w http.ResponseWriter, 
 			q.Add("hub.topic", topic)
 			q.Add("hub.challenge", ourChallenge)
 			validationURL.RawQuery = q.Encode()
-			if validateURL(sub.Callback, ourChallenge) {
+			if validateURL(validationURL.String(), ourChallenge) {
 				subs = append(subs[:i], subs[i+1:]...)
 				break
 			}
