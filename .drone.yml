@@ -24,6 +24,6 @@ pipeline:
     done:
         image: ubuntu
         commands:
-            - ./deployment.sh
+            - sh ./deployment.sh
         environment:
             - PUSHBULLET_API_TOKEN=${pushbullet_api_token}
