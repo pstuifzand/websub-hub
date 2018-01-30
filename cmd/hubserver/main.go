@@ -1,6 +1,8 @@
 package main
 
 import (
+	"crypto/hmac"
+	"crypto/sha1"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -26,6 +28,7 @@ func randStringBytes(n int) string {
 type Subscriber struct {
 	Callback     string
 	LeaseSeconds int64
+	Secret       string
 }
 
 type subscriptionHandler struct {
@@ -41,10 +44,13 @@ func (handler *subscriptionHandler) handlePublish(w http.ResponseWriter, r *http
 	if err != nil {
 		return err
 	}
+	defer res.Body.Close()
+
+	feedContent, err := ioutil.ReadAll(res.Body)
 
 	if subs, e := handler.Subscribers[topic]; e {
 		for _, sub := range subs {
-			req, err := http.NewRequest("POST", sub.Callback, res.Body)
+			req, err := http.NewRequest("POST", sub.Callback, nil)
 			if err != nil {
 				log.Printf("While creating request to %s: %s", sub.Callback, err)
 				continue
@@ -56,6 +62,12 @@ func (handler *subscriptionHandler) handlePublish(w http.ResponseWriter, r *http
 					"https://hub.stuifzandapp.com/",
 					topic,
 				))
+			if sub.Secret != "" {
+				mac := hmac.New(sha1.New, []byte(sub.Secret))
+				mac.Write(feedContent)
+				signature := mac.Sum(nil)
+				req.Header.Add("X-Hub-Signature", fmt.Sprintf("sha1=%s", signature))
+			}
 			res, err = client.Do(req)
 			if err != nil {
 				log.Printf("While POSTing to %s: %s", sub.Callback, err)
@@ -78,7 +90,7 @@ func (handler *subscriptionHandler) handleSubscription(w http.ResponseWriter, r 
 		return nil
 	}
 
-	//secret := r.Form.Get("hub.secret")
+	secret := r.Form.Get("hub.secret")
 	callbackURL, err := url.Parse(callback)
 	if err != nil {
 		return err
@@ -107,7 +119,7 @@ func (handler *subscriptionHandler) handleSubscription(w http.ResponseWriter, r 
 
 		if validateURL(validationURL.String(), ourChallenge) {
 			// challenge accepted
-			handler.addSubscriberCallback(topicURL.String(), Subscriber{callbackURL.String(), leaseSeconds})
+			handler.addSubscriberCallback(topicURL.String(), Subscriber{callbackURL.String(), leaseSeconds, secret})
 		}
 	}()
 
