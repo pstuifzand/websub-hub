@@ -79,6 +79,30 @@ func (handler *subscriptionHandler) handlePublish(w http.ResponseWriter, r *http
 	return nil
 }
 
+func (handler *subscriptionHandler) handleUnsubscription(w http.ResponseWriter, r *http.Request) error {
+	log.Println(r.Form.Encode())
+	callback := r.Form.Get("hub.callback")
+	topic := r.Form.Get("hub.topic")
+
+	if subs, e := handler.Subscribers[topic]; e {
+		for i, sub := range subs {
+			if sub.Callback != callback {
+				continue
+			}
+			ourChallenge := randStringBytes(12)
+			if validateURL(sub.Callback, ourChallenge) {
+				subs = append(subs[:i], subs[i+1:]...)
+				break
+			}
+		}
+		w.WriteHeader(200)
+		fmt.Fprintf(w, "Unsubscribed\n")
+	} else {
+		http.Error(w, "Hub does not handle subscription for topic", 400)
+	}
+	return nil
+}
+
 func (handler *subscriptionHandler) handleSubscription(w http.ResponseWriter, r *http.Request) error {
 	log.Println(r.Form.Encode())
 	callback := r.Form.Get("hub.callback")
@@ -181,7 +205,8 @@ func (handler *subscriptionHandler) ServeHTTP(w http.ResponseWriter, r *http.Req
 	if mode == "subscribe" {
 		handler.handleSubscription(w, r)
 		return
-	} else if mode == "unsubcribe" {
+	} else if mode == "unsubscribe" {
+		handler.handleUnsubscription(w, r)
 		return
 	} else if mode == "publish" {
 		handler.handlePublish(w, r)
