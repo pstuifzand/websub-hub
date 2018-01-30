@@ -20,6 +20,59 @@ func RandStringBytes(n int) string {
 }
 
 type subscriptionHandler struct {
+	Subscribers []string
+}
+
+func (handler *subscriptionHandler) handlePublish(w http.ResponseWriter, r *http.Request) error {
+	topic := r.Form.Get("hub.topic")
+	log.Printf("Topic = %s\n", topic)
+	return nil
+}
+
+func (handler *subscriptionHandler) handleSubscription(w http.ResponseWriter, r *http.Request) error {
+	log.Println(r.Form.Encode())
+	callback := r.Form.Get("hub.callback")
+	topic := r.Form.Get("hub.topic")
+	leaseSecondsStr := r.Form.Get("hub.lease_seconds")
+	_, err := strconv.ParseInt(leaseSecondsStr, 10, 64)
+	if leaseSecondsStr != "" && err != nil {
+		http.Error(w, "hub.lease_seconds is used, but not valid", 400)
+		return nil
+	}
+	//secret := r.Form.Get("hub.secret")
+	callbackURL, err := url.Parse(callback)
+	if err != nil {
+		return err
+	}
+
+	topicURL, err := url.Parse(topic)
+	if err != nil {
+		return err
+	}
+
+	w.WriteHeader(202)
+	fmt.Fprint(w, "Accepted")
+
+	go func() {
+		client := http.Client{}
+
+		validationURL := callbackURL
+		q := validationURL.Query()
+		q.Add("hub.mode", "subscribe")
+		q.Add("hub.topic", topicURL.String())
+		q.Add("hub.challenge", RandStringBytes(12))
+		q.Add("hub.lease_seconds", leaseSecondsStr)
+		validationURL.RawQuery = q.Encode()
+
+		log.Println(validationURL)
+
+		req, err := http.NewRequest(http.MethodGet, callbackURL.String(), nil)
+		res, err := client.Do(req)
+
+		log.Println(res, err)
+	}()
+
+	return nil
 }
 
 func (handler *subscriptionHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -35,58 +88,14 @@ func (handler *subscriptionHandler) ServeHTTP(w http.ResponseWriter, r *http.Req
 	}
 
 	mode := r.Form.Get("hub.mode")
-	callback := r.Form.Get("hub.callback")
-	topic := r.Form.Get("hub.topic")
-	leaseSecondsStr := r.Form.Get("hub.lease_seconds")
-	_, err = strconv.ParseInt(leaseSecondsStr, 10, 64)
-	if leaseSecondsStr != "" && err != nil {
-		http.Error(w, "hub.lease_seconds is used, but not valid", 400)
-		return
-	}
-	//secret := r.Form.Get("hub.secret")
 
 	if mode == "subscribe" {
-		callbackURL, err := url.Parse(callback)
-		if err != nil {
-			http.Error(w, "Can't parse url", 400)
-			return
-		}
-
-		topicURL, err := url.Parse(topic)
-		if err != nil {
-			http.Error(w, "Can't parse url", 400)
-			return
-		}
-
-		w.WriteHeader(202)
-		fmt.Fprint(w, "Accepted")
-
-		go func() {
-			client := http.Client{}
-
-			validationURL := callbackURL
-			q := validationURL.Query()
-			q.Add("hub.mode", "subscribe")
-			q.Add("hub.topic", topicURL.String())
-			q.Add("hub.challenge", RandStringBytes(12))
-			q.Add("hub.lease_seconds", leaseSecondsStr)
-			validationURL.RawQuery = q.Encode()
-
-			log.Println(validationURL)
-
-			req, err := http.NewRequest(http.MethodGet, callbackURL.String(), nil)
-			res, err := client.Do(req)
-
-			// req, err := http.NewRequest("POST", callbackURL.String(), strings.NewReader("TEST"))
-			// req.Header.Add("Content-Type", "text/plain")
-			// req.Header.Add("Link", fmt.Sprintf("<https://hub.stuifzandapp.com/>; rel=hub, <%s>; rel=self", topicURL.String()))
-			// res, err := client.Do(req)
-			log.Println(res, err)
-		}()
-
+		handler.handleSubscription(w, r)
 		return
 	} else if mode == "unsubcribe" {
 		return
+	} else if mode == "publish" {
+		handler.handlePublish(w, r)
 	} else {
 		http.Error(w, "Unknown hub.mode", 400)
 		return
@@ -94,6 +103,9 @@ func (handler *subscriptionHandler) ServeHTTP(w http.ResponseWriter, r *http.Req
 }
 
 func main() {
-	http.Handle("/", &subscriptionHandler{})
+	handler := &subscriptionHandler{}
+	//handler.Subscribers
+
+	http.Handle("/", handler)
 	log.Fatal(http.ListenAndServe(":80", nil))
 }
