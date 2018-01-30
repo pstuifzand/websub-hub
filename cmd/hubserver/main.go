@@ -138,7 +138,7 @@ func (handler *subscriptionHandler) ServeHTTP(w http.ResponseWriter, r *http.Req
 
 func (handler *subscriptionHandler) load() error {
 	file, err := os.Open("./subscription.json")
-	if err != nil {
+	if err != nil && os.IsExist(err) {
 		return err
 	}
 	defer file.Close()
@@ -161,6 +161,7 @@ func (handler *subscriptionHandler) save() error {
 
 func main() {
 	handler := &subscriptionHandler{}
+	handler.Subscribers = make(map[string]Subscriber)
 	handler.load()
 	http.Handle("/", handler)
 	log.Fatal(http.ListenAndServe(":80", nil))
