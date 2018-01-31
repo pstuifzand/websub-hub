@@ -108,6 +108,7 @@ func (handler *subscriptionHandler) handleUnsubscription(w http.ResponseWriter, 
 			validationURL.RawQuery = q.Encode()
 			if validateURL(validationURL.String(), ourChallenge) {
 				subs = append(subs[:i], subs[i+1:]...)
+				log.Println(handler.save())
 				break
 			}
 		}
@@ -205,11 +206,12 @@ func validateURL(url, challenge string) bool {
 }
 
 func (handler *subscriptionHandler) addSubscriberCallback(topic string, subscriber Subscriber) {
-	defer handler.save()
 	if subs, e := handler.Subscribers[topic]; e {
 		for i, sub := range subs {
 			if sub.Callback == subscriber.Callback {
 				handler.Subscribers[topic][i] = subscriber
+				log.Println(handler.save())
+
 				return
 			}
 		}
@@ -289,7 +291,7 @@ func (handler *subscriptionHandler) save() error {
 
 func main() {
 	handler := &subscriptionHandler{}
-	handler.load()
+	log.Println(handler.load())
 	http.Handle("/", handler)
 	log.Fatal(http.ListenAndServe(":80", nil))
 }
