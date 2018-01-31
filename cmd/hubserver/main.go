@@ -75,6 +75,8 @@ func (handler *subscriptionHandler) handlePublish(w http.ResponseWriter, r *http
 				continue
 			}
 			log.Printf("publish: post send to %s\n", sub.Callback)
+			log.Println("Response:")
+			res.Write(os.Stdout)
 		}
 	}
 
