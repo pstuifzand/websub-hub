@@ -37,7 +37,7 @@ type subscriptionHandler struct {
 
 func (handler *subscriptionHandler) handlePublish(w http.ResponseWriter, r *http.Request) error {
 	topic := r.Form.Get("hub.topic")
-	log.Printf("Topic = %s\n", topic)
+	log.Printf("publish: topic = %s\n", topic)
 
 	client := &http.Client{}
 	res, err := client.Get(topic)
@@ -50,6 +50,7 @@ func (handler *subscriptionHandler) handlePublish(w http.ResponseWriter, r *http
 
 	if subs, e := handler.Subscribers[topic]; e {
 		for _, sub := range subs {
+			log.Printf("publish: creating post to %s\n", sub.Callback)
 			req, err := http.NewRequest("POST", sub.Callback, strings.NewReader(string(feedContent)))
 			if err != nil {
 				log.Printf("While creating request to %s: %s", sub.Callback, err)
@@ -73,6 +74,7 @@ func (handler *subscriptionHandler) handlePublish(w http.ResponseWriter, r *http
 				log.Printf("While POSTing to %s: %s", sub.Callback, err)
 				continue
 			}
+			log.Printf("publish: post send to %s\n", sub.Callback)
 		}
 	}
 
@@ -116,27 +118,34 @@ func (handler *subscriptionHandler) handleUnsubscription(w http.ResponseWriter, 
 }
 
 func (handler *subscriptionHandler) handleSubscription(w http.ResponseWriter, r *http.Request) error {
-	log.Println(r.Form.Encode())
 	callback := r.Form.Get("hub.callback")
 	topic := r.Form.Get("hub.topic")
+	secret := r.Form.Get("hub.secret")
 	leaseSecondsStr := r.Form.Get("hub.lease_seconds")
 	leaseSeconds, err := strconv.ParseInt(leaseSecondsStr, 10, 64)
 	if leaseSecondsStr != "" && err != nil {
-		http.Error(w, "hub.lease_seconds is used, but not valid", 400)
+		http.Error(w, "hub.lease_seconds is used, but not a valid integer", 400)
+		log.Printf("hub.lease_seconds is used, but not a valid integer (%s)\n", leaseSecondsStr)
 		return nil
 	}
 
-	secret := r.Form.Get("hub.secret")
+	log.Printf("subscribe: received for topic=%s to callback=%s (lease=%ds)\n", topic, callback, leaseSeconds)
+
 	callbackURL, err := url.Parse(callback)
 	if err != nil {
+		http.Error(w, "Can't parse callback url", 400)
+		log.Printf("Can't parse callback url: %s\n", callback)
 		return err
 	}
 
 	topicURL, err := url.Parse(topic)
 	if err != nil {
+		http.Error(w, "Can't parse topic url", 400)
+		log.Printf("Can't parse topic url: %s\n", topic)
 		return err
 	}
 
+	log.Println("subscribe: sending 202 header request accepted")
 	w.WriteHeader(202)
 	fmt.Fprint(w, "Accepted")
 
@@ -151,10 +160,13 @@ func (handler *subscriptionHandler) handleSubscription(w http.ResponseWriter, r 
 		q.Add("hub.lease_seconds", leaseSecondsStr)
 		validationURL.RawQuery = q.Encode()
 
-		log.Println(validationURL)
+		log.Printf("subscribe: async validation with url %s\n", validationURL.String())
 
 		if validateURL(validationURL.String(), ourChallenge) {
+			log.Printf("subscribe: validation valid\n")
 			handler.addSubscriberCallback(topicURL.String(), Subscriber{callbackURL.String(), leaseSeconds, secret})
+		} else {
+			log.Printf("subscribe: validation failed\n")
 		}
 	}()
 
@@ -203,6 +215,11 @@ func (handler *subscriptionHandler) addSubscriberCallback(topic string, subscrib
 func (handler *subscriptionHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodGet {
 		fmt.Fprintln(w, "WebSub hub")
+		if r.URL.Query().Get("debug") == "1" {
+			enc := json.NewEncoder(w)
+			enc.SetIndent("", "    ")
+			enc.Encode(handler.Subscribers)
+		}
 		return
 	}
 
@@ -226,6 +243,7 @@ func (handler *subscriptionHandler) ServeHTTP(w http.ResponseWriter, r *http.Req
 		handler.handleUnsubscription(w, r)
 		return
 	} else if mode == "publish" {
+		log.Println("hub.mode=publish received")
 		handler.handlePublish(w, r)
 		return
 	} else {
