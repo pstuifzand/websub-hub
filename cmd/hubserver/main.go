@@ -157,7 +157,9 @@ func (handler *subscriptionHandler) handleSubscription(w http.ResponseWriter, r 
 		q.Add("hub.mode", "subscribe")
 		q.Add("hub.topic", topicURL.String())
 		q.Add("hub.challenge", ourChallenge)
-		q.Add("hub.lease_seconds", leaseSecondsStr)
+		if leaseSecondsStr != "" {
+			q.Add("hub.lease_seconds", leaseSecondsStr)
+		}
 		validationURL.RawQuery = q.Encode()
 
 		log.Printf("subscribe: async validation with url %s\n", validationURL.String())
