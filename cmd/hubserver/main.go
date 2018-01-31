@@ -275,8 +275,8 @@ func (handler *subscriptionHandler) load() error {
 	}
 	defer file.Close()
 	dec := json.NewDecoder(file)
-	dec.Decode(handler.Subscribers)
-	return nil
+	err = dec.Decode(handler.Subscribers)
+	return err
 }
 
 func (handler *subscriptionHandler) save() error {
@@ -287,8 +287,8 @@ func (handler *subscriptionHandler) save() error {
 	defer file.Close()
 	dec := json.NewEncoder(file)
 	dec.SetIndent("", "    ")
-	dec.Encode(handler.Subscribers)
-	return nil
+	err = dec.Encode(handler.Subscribers)
+	return err
 }
 
 func main() {
