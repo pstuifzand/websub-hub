@@ -160,6 +160,9 @@ func (handler *subscriptionHandler) handleSubscription(w http.ResponseWriter, r 
 		if leaseSecondsStr != "" {
 			q.Add("hub.lease_seconds", leaseSecondsStr)
 		}
+		if secret != "" {
+			q.Add("hub.secret", secret)
+		}
 		validationURL.RawQuery = q.Encode()
 
 		log.Printf("subscribe: async validation with url %s\n", validationURL.String())
