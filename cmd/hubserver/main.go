@@ -78,6 +78,8 @@ func (handler *subscriptionHandler) handlePublish(w http.ResponseWriter, r *http
 			log.Println("Response:")
 			res.Write(os.Stdout)
 		}
+	} else {
+		log.Println("Topic not found")
 	}
 
 	return nil
@@ -292,6 +294,7 @@ func (handler *subscriptionHandler) save() error {
 func main() {
 	handler := &subscriptionHandler{}
 	log.Println(handler.load())
+	fmt.Printf("%#v\n", handler.Subscribers)
 	http.Handle("/", handler)
 	log.Fatal(http.ListenAndServe(":80", nil))
 }
