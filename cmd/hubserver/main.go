@@ -13,6 +13,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 )
 
 const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
@@ -31,8 +32,14 @@ type Subscriber struct {
 	Secret       string
 }
 
+type Stat struct {
+	Updates    int
+	LastUpdate time.Time
+}
+
 type subscriptionHandler struct {
 	Subscribers map[string][]Subscriber
+	Stats       map[string]Stat
 }
 
 func (handler *subscriptionHandler) handlePublish(w http.ResponseWriter, r *http.Request) error {
@@ -48,8 +55,11 @@ func (handler *subscriptionHandler) handlePublish(w http.ResponseWriter, r *http
 
 	feedContent, err := ioutil.ReadAll(res.Body)
 
+	handler.incStat(fmt.Sprintf("publish.%s", topic))
+
 	if subs, e := handler.Subscribers[topic]; e {
 		for _, sub := range subs {
+			handler.incStat(fmt.Sprintf("publish.post.%s.%s", topic, sub.Callback))
 			log.Printf("publish: creating post to %s\n", sub.Callback)
 			req, err := http.NewRequest("POST", sub.Callback, strings.NewReader(string(feedContent)))
 			if err != nil {
@@ -77,6 +87,7 @@ func (handler *subscriptionHandler) handlePublish(w http.ResponseWriter, r *http
 			log.Printf("publish: post send to %s\n", sub.Callback)
 			log.Println("Response:")
 			res.Write(os.Stdout)
+
 		}
 	} else {
 		log.Println("Topic not found")
@@ -223,13 +234,24 @@ func (handler *subscriptionHandler) addSubscriberCallback(topic string, subscrib
 	handler.Subscribers[topic] = append(handler.Subscribers[topic], subscriber)
 }
 
+func (handler *subscriptionHandler) incStat(name string) {
+	if v, e := handler.Stats[name]; e {
+		handler.Stats[name] = Stat{LastUpdate: time.Now(), Updates: v.Updates + 1}
+	} else {
+		handler.Stats[name] = Stat{LastUpdate: time.Now(), Updates: 1}
+	}
+	handler.saveStats()
+}
+
 func (handler *subscriptionHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodGet {
 		fmt.Fprintln(w, "WebSub hub")
 		if r.URL.Query().Get("debug") == "1" {
+			handler.incStat("http.index.debug")
 			enc := json.NewEncoder(w)
 			enc.SetIndent("", "    ")
 			enc.Encode(handler.Subscribers)
+			enc.Encode(handler.Stats)
 		}
 		return
 	}
@@ -263,7 +285,23 @@ func (handler *subscriptionHandler) ServeHTTP(w http.ResponseWriter, r *http.Req
 	}
 }
 
-func (handler *subscriptionHandler) load() error {
+func (handler *subscriptionHandler) loadStats() error {
+	file, err := os.Open("./stats.json")
+	if err != nil {
+		if os.IsExist(err) {
+			return err
+		} else {
+			handler.Stats = make(map[string]Stat)
+			return nil
+		}
+	}
+	defer file.Close()
+	dec := json.NewDecoder(file)
+	err = dec.Decode(&handler.Stats)
+	return err
+}
+
+func (handler *subscriptionHandler) loadSubscriptions() error {
 	file, err := os.Open("./subscription.json")
 	if err != nil {
 		if os.IsExist(err) {
@@ -279,7 +317,27 @@ func (handler *subscriptionHandler) load() error {
 	return err
 }
 
-func (handler *subscriptionHandler) save() error {
+func (handler *subscriptionHandler) load() error {
+	err := handler.loadSubscriptions()
+	if err != nil {
+		return err
+	}
+	return handler.loadStats()
+}
+
+func (handler *subscriptionHandler) saveStats() error {
+	file, err := os.Create("./stats.json")
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+	dec := json.NewEncoder(file)
+	dec.SetIndent("", "    ")
+	err = dec.Encode(&handler.Stats)
+	return err
+}
+
+func (handler *subscriptionHandler) saveSubscriptions() error {
 	file, err := os.Create("./subscription.json")
 	if err != nil {
 		return err
@@ -289,6 +347,11 @@ func (handler *subscriptionHandler) save() error {
 	dec.SetIndent("", "    ")
 	err = dec.Encode(&handler.Subscribers)
 	return err
+}
+
+func (handler *subscriptionHandler) save() error {
+	handler.saveSubscriptions()
+	return handler.saveStats()
 }
 
 func main() {
