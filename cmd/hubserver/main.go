@@ -143,20 +143,26 @@ func (handler *subscriptionHandler) handleSubscription(w http.ResponseWriter, r 
 	if leaseSecondsStr != "" && err != nil {
 		http.Error(w, "hub.lease_seconds is used, but not a valid integer", 400)
 		log.Printf("hub.lease_seconds is used, but not a valid integer (%s)\n", leaseSecondsStr)
-		return nil
+		return err
 	}
 
 	log.Printf("subscribe: received for topic=%s to callback=%s (lease=%ds)\n", topic, callback, leaseSeconds)
 
+	if _, e := r.Form["hub.lease_seconds"]; !e {
+		leaseSeconds = 3600
+		leaseSecondsStr = "3600"
+		log.Printf("subscribe: lease_seconds was empty use default %ds\n", leaseSeconds)
+	}
+
 	callbackURL, err := url.Parse(callback)
-	if err != nil {
+	if callback == "" || err != nil {
 		http.Error(w, "Can't parse callback url", 400)
 		log.Printf("Can't parse callback url: %s\n", callback)
 		return err
 	}
 
 	topicURL, err := url.Parse(topic)
-	if err != nil {
+	if topic == "" || err != nil {
 		http.Error(w, "Can't parse topic url", 400)
 		log.Printf("Can't parse topic url: %s\n", topic)
 		return err
@@ -174,9 +180,7 @@ func (handler *subscriptionHandler) handleSubscription(w http.ResponseWriter, r 
 		q.Add("hub.mode", "subscribe")
 		q.Add("hub.topic", topicURL.String())
 		q.Add("hub.challenge", ourChallenge)
-		if leaseSecondsStr != "" {
-			q.Add("hub.lease_seconds", leaseSecondsStr)
-		}
+		q.Add("hub.lease_seconds", leaseSecondsStr)
 		if secret != "" {
 			q.Add("hub.verify_token", secret)
 		}
