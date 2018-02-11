@@ -30,6 +30,7 @@ type Subscriber struct {
 	Callback     string
 	LeaseSeconds int64
 	Secret       string
+	Created      time.Time
 }
 
 type Stat struct {
@@ -190,7 +191,7 @@ func (handler *subscriptionHandler) handleSubscription(w http.ResponseWriter, r 
 
 		if validateURL(validationURL.String(), ourChallenge) {
 			log.Printf("subscribe: validation valid\n")
-			handler.addSubscriberCallback(topicURL.String(), Subscriber{callbackURL.String(), leaseSeconds, secret})
+			handler.addSubscriberCallback(topicURL.String(), Subscriber{callbackURL.String(), leaseSeconds, secret, time.Now()})
 		} else {
 			log.Printf("subscribe: validation failed\n")
 		}
