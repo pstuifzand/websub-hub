@@ -134,6 +134,7 @@ func (handler *subscriptionHandler) handleUnsubscription(w http.ResponseWriter, 
 }
 
 func (handler *subscriptionHandler) handleSubscription(w http.ResponseWriter, r *http.Request) error {
+	log.Printf("suscription request received: %s %#v\n", r.URL.String(), r.Form)
 	callback := r.Form.Get("hub.callback")
 	topic := r.Form.Get("hub.topic")
 	secret := r.Form.Get("hub.secret")
