@@ -87,7 +87,7 @@ func (handler *subscriptionHandler) handlePublish(w http.ResponseWriter, r *http
 				signature := mac.Sum(nil)
 				postReq.Header.Add("X-Hub-Signature", fmt.Sprintf("sha1=%x", signature))
 			}
-			postRes, err = client.Do(postReq)
+			postRes, err := client.Do(postReq)
 			if err != nil {
 				log.Printf("While POSTing to %s: %s", sub.Callback, err)
 				continue
