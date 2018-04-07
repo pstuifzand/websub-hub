@@ -16,6 +16,10 @@ import (
 	"time"
 )
 
+func init() {
+	log.SetFlags(log.Ltime | log.Lshortfile)
+}
+
 const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
 func randStringBytes(n int) string {
@@ -48,7 +52,9 @@ func (handler *subscriptionHandler) handlePublish(w http.ResponseWriter, r *http
 	log.Printf("publish: topic = %s\n", topic)
 
 	client := &http.Client{}
-	res, err := client.Get(topic)
+	req, err := http.NewRequest("GET", topic, nil)
+	req.Header.Add("Accept", "*/*")
+	res, err := client.Do(req)
 	if err != nil {
 		return err
 	}
@@ -135,7 +141,7 @@ func (handler *subscriptionHandler) handleUnsubscription(w http.ResponseWriter, 
 }
 
 func (handler *subscriptionHandler) handleSubscription(w http.ResponseWriter, r *http.Request) error {
-	log.Printf("suscription request received: %s %#v\n", r.URL.String(), r.Form)
+	log.Printf("subscription request received: %s %#v\n", r.URL.String(), r.Form)
 	callback := r.Form.Get("hub.callback")
 	topic := r.Form.Get("hub.topic")
 	secret := r.Form.Get("hub.secret")
