@@ -60,7 +60,11 @@ func (handler *subscriptionHandler) handlePublish(w http.ResponseWriter, r *http
 	}
 	defer res.Body.Close()
 
+	feedContentType := res.Header.Get("Content-Type")
 	feedContent, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		return err
+	}
 
 	handler.incStat(fmt.Sprintf("publish.%s", topic))
 
@@ -74,7 +78,7 @@ func (handler *subscriptionHandler) handlePublish(w http.ResponseWriter, r *http
 				log.Printf("While creating request to %s: %s", sub.Callback, err)
 				continue
 			}
-			postReq.Header.Add("Content-Type", res.Header.Get("Content-Type"))
+			postReq.Header.Add("Content-Type", feedContentType)
 			postReq.Header.Add("Link",
 				fmt.Sprintf(
 					"<%s>; rel=hub, <%s>; rel=self",
