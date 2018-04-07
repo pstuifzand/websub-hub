@@ -66,15 +66,16 @@ func (handler *subscriptionHandler) handlePublish(w http.ResponseWriter, r *http
 
 	if subs, e := handler.Subscribers[topic]; e {
 		for _, sub := range subs {
+
 			handler.incStat(fmt.Sprintf("publish.post.%s.%s", topic, sub.Callback))
 			log.Printf("publish: creating post to %s\n", sub.Callback)
-			req, err := http.NewRequest("POST", sub.Callback, strings.NewReader(string(feedContent)))
+			postReq, err := http.NewRequest("POST", sub.Callback, strings.NewReader(string(feedContent)))
 			if err != nil {
 				log.Printf("While creating request to %s: %s", sub.Callback, err)
 				continue
 			}
-			req.Header.Add("Content-Type", res.Header.Get("Content-Type"))
-			req.Header.Add("Link",
+			postReq.Header.Add("Content-Type", res.Header.Get("Content-Type"))
+			postReq.Header.Add("Link",
 				fmt.Sprintf(
 					"<%s>; rel=hub, <%s>; rel=self",
 					"https://hub.stuifzandapp.com/",
@@ -84,16 +85,16 @@ func (handler *subscriptionHandler) handlePublish(w http.ResponseWriter, r *http
 				mac := hmac.New(sha1.New, []byte(sub.Secret))
 				mac.Write(feedContent)
 				signature := mac.Sum(nil)
-				req.Header.Add("X-Hub-Signature", fmt.Sprintf("sha1=%x", signature))
+				postReq.Header.Add("X-Hub-Signature", fmt.Sprintf("sha1=%x", signature))
 			}
-			res, err = client.Do(req)
+			postRes, err = client.Do(postReq)
 			if err != nil {
 				log.Printf("While POSTing to %s: %s", sub.Callback, err)
 				continue
 			}
 			log.Printf("publish: post send to %s\n", sub.Callback)
 			log.Println("Response:")
-			res.Write(os.Stdout)
+			postRes.Write(os.Stdout)
 
 		}
 	} else {
