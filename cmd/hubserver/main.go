@@ -305,9 +305,7 @@ func (handler *subscriptionHandler) ServeHTTP(w http.ResponseWriter, r *http.Req
 func (handler *subscriptionHandler) loadStats() error {
 	file, err := os.Open("./stats.json")
 	if err != nil {
-		if os.IsExist(err) {
-			return err
-		} else {
+		if os.IsNotExist(err) {
 			handler.Stats = make(map[string]Stat)
 			return nil
 		}
@@ -321,9 +319,7 @@ func (handler *subscriptionHandler) loadStats() error {
 func (handler *subscriptionHandler) loadSubscriptions() error {
 	file, err := os.Open("./subscription.json")
 	if err != nil {
-		if os.IsExist(err) {
-			return err
-		} else {
+		if os.IsNotExist(err) {
 			handler.Subscribers = make(map[string][]Subscriber)
 			return nil
 		}
